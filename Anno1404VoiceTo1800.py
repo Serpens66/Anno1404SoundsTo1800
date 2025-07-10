@@ -79,7 +79,7 @@ try:
             </DurationLanguageArray>
           </Audio>
           <WwiseStandard>
-            <WwiseID>{SoundBankID}</WwiseID>
+            <WwiseID>{EventId}</WwiseID>
           </WwiseStandard>
         </Values>
       </Asset>"""
@@ -205,10 +205,9 @@ try:
       else:
           print(f"rename_file: {filename} existiert nicht, kann daher auch nicht umbenannt werden")
 
-  def rename_wemwav_to_wav(filepathtowemwav):
-    rename_file(filepathtowemwav,str(filepathtowemwav).replace(".wem.wav",".wav"))
-   
-
+  def replaceinvalidchars(Text): # invalid chars for xml
+    return Text.replace("<","&lt;").replace(">","&gt;").replace("&","&amp;").replace("\'","&apos;").replace("\"","&quot;")
+  
   # \data\loca\eng\txt
   def GetTextFromGUIDsAnno1404(Anno1404_path,GUIDs):
     Anno1404_pathobj = into_path(Anno1404_path)
@@ -236,7 +235,9 @@ try:
                         if GUID in zeile:
                           zeilensplit = zeile.split("=") # 40000009=Agent of the Doge
                           if len(zeilensplit)==2 and GUID==zeilensplit[0]:
-                            Texts[AnnoLanguage][GUID] = zeilensplit[1]
+                            Text = zeilensplit[1]
+                            Text = replaceinvalidchars(Text) # these signs are not allowed in xml text
+                            Texts[AnnoLanguage][GUID] = Text
                             break
     return Texts
 
@@ -255,7 +256,7 @@ try:
             GUID = None
           if GUID is not None and GUID in Anno1404GUIDs:
             subparname = sub_p.parents[0].name
-            wavfilepathob = into_path(f"{langsavedestination}/{lang}_{subparname}_{GUID}.wav")
+            wavfilepathob = into_path(f"{langsavedestination}/{subparname}_{GUID}.wav")
             if not wavfilepathob.is_file(): # wav file does not exist yet, then convert it
               convertmp3towav(sub_p,wavfilepathob)
             wavfiles[GUID] = wavfilepathob
@@ -291,6 +292,11 @@ try:
     input(f"\n#########################################\nDone creating the wav files at {savedestination}\nNow use these wav files to create the soundbank(s) with Wwise.\nSee the -HowToUse.txt- file in the Anno1800_wwise folder.\n\nYou can delete the wav files afterwards if you dont need them anymore.\nHitEnter when you are done")
     input(f"\nHit Enter when you put the created soundbank and json files into your Mod folder in data/sound/generatedsoundbanks/windows/...\nThen the script will create the xml files for your mod in the folder {savedestination}\n")
     
+    putin = input("\nDo you only want (A)udio or also Audio(T)ext assets and translation text files (for speech/voice you usually need AudioText. for general sounds you do not)\n")
+    while putin.upper()!="A" and putin.upper()!="T":
+      putin = input("\nDo you only want (A)udio or also Audio(T)ext assets (for speech/voice you usually need AudioText. for general sounds you do not)\n")
+    putin = putin.upper()
+    
     audioinfos = {}
     soundbankfolderpathobj = into_path(f"{YourModFolderObj}/data/sound/generatedsoundbanks/windows")
     if soundbankfolderpathobj.is_dir():
@@ -312,7 +318,7 @@ try:
               if AnnoLanguage not in SoundBanks[SoundBankID]:
                 SoundBanks[SoundBankID][AnnoLanguage] = {"jsonPath":str(sub_p),"SoundBankName":SoundBankName}
               for event in data["SoundBanksInfo"]["SoundBanks"][0]["IncludedEvents"]:
-                eventID = event["Id"]
+                EventId = event["Id"]
                 DurationMin = round(float(event["DurationMin"])*1000)
                 DurationMax = round(float(event["DurationMax"])*1000)
                 eventname = event["Name"] # "Play_spy_40700606"
@@ -328,12 +334,13 @@ try:
                   print(f"was not able to get GUID out of filename, skipping it: {wavfilename}")
                 else:
                   GUIDs.add(GUID)
-                if not eventID in audioinfos:
-                  audioinfos[eventID] = {}
-                audioinfos[eventID][AnnoLanguage] = {"1404GUID":GUID,"FileID":FileID,"DurationMin":DurationMin,"DurationMax":DurationMax,"AnnoLanguage":AnnoLanguage,"Languagebnk":Languagebnk,"SoundBankName":SoundBankName,"SoundBankID":SoundBankID,"Eventname":eventname,"wavfilename":wavfilename}
+                if not EventId in audioinfos:
+                  audioinfos[EventId] = {}
+                audioinfos[EventId][AnnoLanguage] = {"1404GUID":GUID,"FileID":FileID,"DurationMin":DurationMin,"DurationMax":DurationMax,"AnnoLanguage":AnnoLanguage,"Languagebnk":Languagebnk,"SoundBankName":SoundBankName,"SoundBankID":SoundBankID,"Eventname":eventname,"wavfilename":wavfilename}
       
-      Texts = GetTextFromGUIDsAnno1404(Unpacked1404Files,GUIDs)
-      # audioinfos[eventID][AnnoLanguage] = {"Id":Id,"DurationMin":DurationMin,"DurationMax":DurationMax,"AnnoLanguage":AnnoLanguage,"Languagebnk":Languagebnk,"SoundBankName":SoundBankName,"SoundBankID":SoundBankID,"Eventname":eventname}
+      if putin=="T":
+        Texts = GetTextFromGUIDsAnno1404(Unpacked1404Files,GUIDs)
+      # audioinfos[EventId][AnnoLanguage] = {"Id":Id,"DurationMin":DurationMin,"DurationMax":DurationMax,"AnnoLanguage":AnnoLanguage,"Languagebnk":Languagebnk,"SoundBankName":SoundBankName,"SoundBankID":SoundBankID,"Eventname":eventname}
       CurrentGUID = StartingGUID
       final_asset_code = ""
       final_text_code = {"Russian":"","German":"","English":"","French":""}
@@ -352,11 +359,12 @@ try:
             CurrentGUID += 1
             soundbanksdone.add(SoundBankID)
       final_soundbank_code = xml_SoundBank_base.format(SoundBankAsset=soundbankassets , SoundBankEntry=soundbankentries)
-      for eventID,infos in audioinfos.items():
+      for EventId,infos in audioinfos.items():
         AudioGUID = CurrentGUID
         CurrentGUID += 1
-        AudioTextGUID = CurrentGUID
-        CurrentGUID += 1
+        if putin=="T":
+          AudioTextGUID = CurrentGUID
+          CurrentGUID += 1
         Durations = {}
         audio_code = xml_AudioAsset
         filesdone = set() # each file only needs on entry in assets.xml regardless of how many languages
@@ -381,32 +389,35 @@ try:
             audio_code = audio_code.replace("{Russian_DurationMax}",str(Durations["Russian_DurationMax"]))
             audio_code = audio_code.replace("{Russian_DurationMin}",str(Durations["Russian_DurationMin"]))
           
-          if eventID not in filesdone:
-            filesdone.add(eventID)
-            Eventname = info["Eventname"]                
-            audio_code = audio_code.replace("{AudioGUID}",str(AudioGUID)).replace("{SoundBankID}",str(info["SoundBankID"])).replace("{Eventname}",str(Eventname))
+          if EventId not in filesdone:
+            filesdone.add(EventId)
+            Eventname = info["Eventname"]
+            audio_code = audio_code.replace("{AudioGUID}",str(AudioGUID)).replace("{SoundBankID}",str(info["SoundBankID"])).replace("{Eventname}",str(Eventname)).replace("{EventId}",str(EventId))
             audiotext_code = ""
           GUID1404 = str(info["1404GUID"])
-          Text = Texts[AnnoLanguage].get(GUID1404,"UNKNOWN")
-          if Text=="UNKNOWN":
-            print(f"Did not find Text for GUID {GUID1404} in Language {AnnoLanguage}")
+          if putin=="T":
+            Text = Texts[AnnoLanguage].get(GUID1404,"UNKNOWN")
+            if Text=="UNKNOWN":
+              print(f"Did not find Text for GUID {GUID1404} in Language {AnnoLanguage}")
           
           if AnnoLanguage=="English": # add AudioText when we do english, to add the enlgish text
             GUID1404 = int(GUID1404)
             Mood = GUID1404 in MoodNegativeGUIDs and "Negative" or GUID1404 in MoodPositiveGUIDs and "Positive" or g_Mood
             SpeechAudioType = GUID1404 in SpeechAudioTypeCampaignGUIDs and "Campaign" or GUID1404 in SpeechAudioTypeMovieGUIDs and "Movie" or GUID1404 in SpeechAudioTypePaMSyGUIDs and "PaMSy" or g_SpeechAudioType
-            audiotext_code = xml_AudioTextAsset.format(AudioTextGUID=AudioTextGUID,Eventname=Eventname,AudioGUID=AudioGUID,SpeechAudioType=SpeechAudioType,Mood=Mood,Text=Text)
-          final_text_code[AnnoLanguage] = f"{final_text_code[AnnoLanguage]}\n{xml_textentry.format(AudioTextGUID=AudioTextGUID,Text=Text)}\n"
+            if putin=="T":
+              audiotext_code = xml_AudioTextAsset.format(AudioTextGUID=AudioTextGUID,Eventname=Eventname,AudioGUID=AudioGUID,SpeechAudioType=SpeechAudioType,Mood=Mood,Text=Text)
+          if putin=="T":
+            final_text_code[AnnoLanguage] = f"{final_text_code[AnnoLanguage]}\n{xml_textentry.format(AudioTextGUID=AudioTextGUID,Text=Text)}\n"
           
         final_asset_code = f"{final_asset_code}\n{audio_code}\n{audiotext_code}"
         
       main_code = xml_base.format(StartingGUID=StartingGUID,EndGUID=CurrentGUID,SoundBankCode=final_soundbank_code,AssetCode=xml_Asset_base.format(AudioAssets=final_asset_code))
-      
-      for AnnoLanguage,finaltext in final_text_code.items():
-        Textxml = xml_text_base.format(TextEntries=finaltext)
-        with open(f"{savedestination}/text_{AnnoLanguage.lower()}.xml", "w", encoding='utf-8') as f:
-          f.write(Textxml)
-      with open(f"{savedestination}/assets.xml", "w", encoding='utf-8') as f:
+      if putin=="T":
+        for AnnoLanguage,finaltext in final_text_code.items():
+          Textxml = xml_text_base.format(TextEntries=finaltext)
+          with open(f"{savedestination}/text_{AnnoLanguage.lower()}.xml", "w", encoding='utf-8') as f:
+            f.write(Textxml)
+      with open(f"{savedestination}/audioassets.include.xml", "w", encoding='utf-8') as f:
         f.write(main_code)
       # print(audioinfos)
       print(CurrentGUID)
