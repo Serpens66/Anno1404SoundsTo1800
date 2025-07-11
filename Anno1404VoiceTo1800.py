@@ -39,8 +39,10 @@ try:
     <!-- uses GUIDs {StartingGUID} to including {EndGUID} -->
 
     <!-- Positioning: -->
-    <!-- for things like shots and stuff that is played without your user interaction at a location ingame, you might want to define MaxAttenuation in Audio property -->
-    
+    <!-- for things like shots and stuff that is played without your user interaction at a location ingame, you might want to adjust MaxAttenuation in Audio property -->
+    <!-- I think adding a value for MaxAttenuation does not hurt if you dont need any positioning, so I will add it to all Audios. -->
+    <!-- Depending on where you use the Sound, the object where you use it must support positioning I think. Eg the Sounds in SoundEmitter of an object -->
+    <!--  usually are based on position, while the SoundEmitterCommandBarks voicelines are not. See vanilla for typical postitioned MaxAttenuation values -->
 
     {SoundBankCode}
     {AssetCode}
@@ -77,6 +79,7 @@ try:
                 <DurationMaximum>{Russian_DurationMax}</DurationMaximum>
               </Russian>
             </DurationLanguageArray>
+            <MaxAttenuation>1000000</MaxAttenuation>
           </Audio>
           <WwiseStandard>
             <WwiseID>{EventId}</WwiseID>

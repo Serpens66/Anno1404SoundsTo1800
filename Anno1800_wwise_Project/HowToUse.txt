@@ -7,7 +7,7 @@ open project from folder by starting "Anno1800_wwise.wproj"
 The free version only support up to 200 audio files per soundbank. if you have 4 translations of one audio, it is 4 files.
 So to support all 4 languages of Anno you can only add 50 sounds per soundbank.
 
-At best make sure that your audiofile names are unique and maybe even include a short version of your nickname. Its not 100% if this is required, but just to be sure.
+At best make sure that your audiofile names are unique and maybe even include a short version of your nickname (but the name for different languages must be the same). Its not 100% if this is required, but just to be sure.
 At least within your soundbank the file (and later eventnames) must be unique. And later your soundbankname also must be unique.
 
 
